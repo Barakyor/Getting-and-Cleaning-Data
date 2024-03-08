@@ -1,0 +1,67 @@
+# Load necessary libraries
+library(dplyr)
+
+# Set the directory where you want to save the dataset
+directory <- "C:/Users/User/Documents/R Training/"
+
+# Create the directory if it doesn't exist
+if (!file.exists(directory)) {
+  dir.create(directory)
+}
+
+# Set the URL for the dataset
+url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+
+# Set the file name
+file_name <- paste0(directory, "UCI HAR Dataset.zip")
+
+# Download the dataset
+download.file(url, file_name, mode = "wb")
+
+# Unzip the dataset
+unzip(file_name, exdir = directory)
+
+# Set the working directory to the unzipped dataset
+setwd(paste0(directory, "UCI HAR Dataset"))
+
+# Step 2: Read the necessary files
+features <- read.table("features.txt", col.names = c("index", "feature"))
+activity_labels <- read.table("activity_labels.txt", col.names = c("index", "activity"))
+subject_train <- read.table("train/subject_train.txt", col.names = "subject")
+X_train <- read.table("train/X_train.txt", col.names = features$feature)
+y_train <- read.table("train/y_train.txt", col.names = "activity")
+subject_test <- read.table("test/subject_test.txt", col.names = "subject")
+X_test <- read.table("test/X_test.txt", col.names = features$feature)
+y_test <- read.table("test/y_test.txt", col.names = "activity")
+
+# Step 3: Merge the training and test sets
+X <- rbind(X_train, X_test)
+y <- rbind(y_train, y_test)
+subject <- rbind(subject_train, subject_test)
+data <- cbind(subject, y, X)
+
+# Step 4: Extract only the measurements on the mean and standard deviation
+mean_std_features <- grep("mean\\(\\)|std\\(\\)", features$feature)
+data <- data[, c(1, 2, mean_std_features + 2)]
+
+# Step 5: Use descriptive activity names
+data$activity <- factor(data$activity, levels = activity_labels$index, labels = activity_labels$activity)
+
+# Step 6: Label the dataset with descriptive variable names
+names(data) <- gsub("\\(|\\)", "", names(data))
+names(data) <- tolower(names(data))
+names(data) <- gsub("^t", "time", names(data))
+names(data) <- gsub("^f", "frequency", names(data))
+names(data) <- gsub("acc", "accelerometer", names(data))
+names(data) <- gsub("gyro", "gyroscope", names(data))
+names(data) <- gsub("mag", "magnitude", names(data))
+names(data) <- gsub("bodybody", "body", names(data))
+
+# Step 7: Create a tidy dataset with the average of each variable for each activity and each subject
+# Calculate the mean for each variable for each activity and each subject
+tidy_data <- aggregate(. ~ subject + activity, data, mean)
+
+# Step 8: Write the tidy dataset to a file
+write.table(tidy_data, "tidy_data.txt", row.names = FALSE)
+
+
